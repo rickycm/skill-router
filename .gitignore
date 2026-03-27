@@ -5,3 +5,7 @@
 
 # Skills pool directory
 .skills-pool/
+
+# Generated data files
+data/skill_embeddings.db
+data/vectors.npy
