@@ -219,6 +219,8 @@ skill-router/                          # ← 整个目录复制到 ~/.openclaw/s
 ├── .env.example
 ├── .env                              # 填入你的 API Key
 ├── skill_router/                     # Python 包
+│   ├── _vendor/                    # 内置 Cisco Skill Scanner
+│   │   └── skill_scanner/          # 安全扫描模块
 │   ├── __init__.py
 │   ├── __main__.py                  # 支持 python3 -m skill_router
 │   ├── config.py                    # 配置加载
@@ -226,7 +228,7 @@ skill-router/                          # ← 整个目录复制到 ~/.openclaw/s
 │   ├── manifest.py                   # SKILL.md 解析
 │   ├── registry.py                   # SQLite + NumPy 存储
 │   ├── router.py                    # 路由主入口
-│   ├── scanner.py                   # Cisco Skill Scanner 封装
+│   ├── scanner.py                   # 安全扫描封装
 │   └── cli.py                       # CLI 工具（含安全扫描集成）
 ├── scripts/                          # 向后兼容脚本
 └── .skills-pool/                     # ← 业务 skills 放这里
