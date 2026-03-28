@@ -9,6 +9,8 @@ oletools>=0.60
 pdfid>=0.2.0
 magika>=0.3.0
 pydantic>=2.0
+PyYAML>=6.0
+python-frontmatter>=1.0.0
 
 # 深度扫描可选依赖
 # anthropic>=0.76.0
