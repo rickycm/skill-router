@@ -81,5 +81,5 @@ class SkillRouter:
 
     @classmethod
     def create(cls) -> "SkillRouter":
-        """工厂方法：从 OpenClaw 配置创建"""
-        return cls(Config.from_openclaw())
+        """工厂方法：优先从 .env 加载配置，fallback 到 OpenClaw"""
+        return cls(Config.create())
