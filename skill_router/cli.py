@@ -9,10 +9,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from skill_router import SkillRouter
-from skill_router.config import _skills_pool_dir
+from skill_router.config import _skills_pool_dir, _skills_install_dir, _skill_dir
 
 # Skills 资源池路径（被检索但不被 OpenClaw 扫描）
 SKILLS_POOL = _skills_pool_dir()
+SKILLS_INSTALL_DIR = _skills_install_dir()
+SKILL_ROUTER_DIR = _skill_dir()
 EXCLUDE = {"clawhub", "node_modules", ".git", "__pycache__", ".DS_Store"}
 
 
@@ -93,6 +95,116 @@ def _display_full_report(result) -> None:
                 print(f"  描述: {f.description[:200]}")
             if f.remediation:
                 print(f"  修复: {f.remediation}")
+
+
+def cmd_init(args):
+    """初始化：扫描并迁移已安装的 skills 到管理目录"""
+    import shutil
+
+    router = SkillRouter.create()
+
+    if not SKILLS_INSTALL_DIR.exists():
+        print(f"❌ Skills 安装目录不存在: {SKILLS_INSTALL_DIR}")
+        sys.exit(1)
+
+    # 扫描安装目录中的 skills
+    all_skills = {
+        d: d / "SKILL.md"
+        for d in SKILLS_INSTALL_DIR.iterdir()
+        if d.is_dir() and d != SKILL_ROUTER_DIR and d.name not in EXCLUDE
+    }
+
+    # 只保留有 SKILL.md 的目录
+    existing_skills = {
+        name: path for name, path in all_skills.items() if path.exists()
+    }
+
+    if not existing_skills:
+        print(f"📂 在 {SKILLS_INSTALL_DIR} 中未发现其他 Skills")
+        print(f"💡 首次使用，请使用 'python3 -m skill_router install <path>' 安装新 Skill")
+        sys.exit(0)
+
+    print(f"""
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║   🔄 Skill Router 初始化                                            ║
+║                                                                      ║
+║   发现 {len(existing_skills)} 个已安装的 Skills，准备迁移到管理目录...              ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+    """)
+
+    print(f"📂 发现以下 Skills:\n")
+    for i, (name, path) in enumerate(sorted(existing_skills.items()), 1):
+        print(f"  [{i}] {name}")
+
+    print(f"\n→ 迁移到: {SKILLS_POOL}")
+    print(f"→ Skill Router 目录不会被迁移\n")
+
+    # 确定扫描模式
+    scan_mode = getattr(args, "scan_mode", "prompt")
+    if scan_mode == "prompt":
+        scan_mode = _prompt_scan_mode()
+
+    # 确保 .skills-pool 存在
+    SKILLS_POOL.mkdir(parents=True, exist_ok=True)
+
+    print(f"🔒 扫描模式: {scan_mode}\n")
+
+    success, skipped, failed, blocked = 0, 0, 0, 0
+    blocked_results = []
+
+    for name, skill_path in sorted(existing_skills.items()):
+        dest = SKILLS_POOL / name
+
+        # 如果目标已存在，跳过
+        if dest.exists():
+            print(f"  ⏭ {name}（已存在于 .skills-pool/）")
+            skipped += 1
+            continue
+
+        # 复制到 .skills-pool
+        try:
+            shutil.copytree(skill_path, dest)
+            print(f"  ✅ {name} → 已复制")
+        except Exception as e:
+            print(f"  ❌ {name}: 复制失败 - {e}")
+            failed += 1
+            continue
+
+        # 注册并扫描
+        try:
+            _, scan_result = router.install(str(dest), scan_mode=scan_mode)
+            success += 1
+        except Exception as e:
+            if hasattr(e, "scan_result") and e.scan_result is not None:
+                print(f"  🔒 {name} - 安全扫描阻止")
+                blocked_results.append((name, e.scan_result, dest))
+                blocked += 1
+            else:
+                print(f"  ❌ {name}: {e}")
+                failed += 1
+
+    print(f"\n{'=' * 60}")
+    print(f"迁移完成：{success} 成功，{skipped} 跳过，{blocked} 被阻止，{failed} 失败")
+
+    if blocked_results:
+        print(f"\n🚨 被阻止的 Skills ({len(blocked_results)}):")
+        for name, result, dest in blocked_results:
+            # 移除已复制的目录
+            try:
+                shutil.rmtree(dest)
+                print(f"  🔒 {name}: 已回滚（从 .skills-pool/ 删除）")
+            except:
+                print(f"  🔒 {name}: 回滚失败，请手动删除 {dest}")
+            findings = result.findings
+            high_count = sum(1 for f in findings if f.severity.value in ("HIGH", "CRITICAL"))
+            print(f"     {high_count} 高危发现 - {result.max_severity.value}")
+        print(f"\n💡 使用 'python3 -m skill_router install --scan-mode skip' 强制安装")
+
+    if success > 0:
+        print(f"\n✅ 初始化完成！当前共有 {router.count()} 个 Skills 已索引")
+        print(f"💡 使用 'python3 -m skill_router list' 查看所有 Skills")
 
 
 def cmd_search(args):
@@ -233,6 +345,11 @@ def main():
 
     p_list = sub.add_parser("list", help="列出所有已注册 Skills")
     p_list.set_defaults(fn=cmd_list)
+
+    p_init = sub.add_parser("init", help="初始化：扫描并迁移已安装的 Skills")
+    p_init.add_argument("--scan-mode", choices=["fast", "deep", "skip", "prompt"],
+                        default="prompt", help="安全扫描模式（默认: prompt）")
+    p_init.set_defaults(fn=cmd_init)
 
     p_install = sub.add_parser("install", help="安装单个 Skill")
     p_install.add_argument("path", help="Skill 目录路径")

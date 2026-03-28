@@ -14,9 +14,42 @@ cp -r skill-router/ ~/.openclaw/skills/
 cd ~/.openclaw/skills/skill-router
 pip install --break-system-packages .
 
-# 3. 初始化向量索引
+# 3. 初始化向量索引（重要！）
 python3 -m skill_router install-all
+
+# 4. 迁移已安装的 Skills（可选，但推荐）
+#    扫描 ~/.openclaw/skills/ 中已有的 Skills 并迁移到管理目录
+python3 -m skill_router init
 ```
+
+---
+
+## 初始化说明
+
+### install-all
+
+索引 `.skills-pool/` 目录中的 Skills（如果该目录存在且有 Skills）。
+
+### init（重要）
+
+**在已有 Skills 平台上安装时必须执行此步骤！**
+
+扫描 `~/.openclaw/skills/` 目录，将已安装的 Skills 迁移到 `.skills-pool/` 管理目录：
+
+```
+~/.openclaw/skills/
+├── skill-router/        # Skill Router 自身
+│   └── .skills-pool/     # 管理目录（迁移目标）
+├── clawhub/              # 从 clawhub 安装的 Skills
+├── my-skill-a/           # 用户手动安装的 Skills
+└── my-skill-b/           # → init 会扫描并迁移这些
+```
+
+执行 `init` 后会：
+1. 扫描 `~/.openclaw/skills/` 中所有有 `SKILL.md` 的目录
+2. 显示发现列表
+3. 复制到 `.skills-pool/` 并进行安全扫描
+4. 扫描失败的 Skills 会被回滚并提示
 
 ---
 
