@@ -9,3 +9,9 @@
 # Generated data files
 data/skill_embeddings.db
 data/vectors.npy
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
