@@ -27,6 +27,14 @@ def _skills_pool_dir() -> Path:
     return _skill_dir() / ".skills-pool"
 
 
+# skill-router 所在目录的父目录
+# 例如 skill-router 安装在 ~/.openclaw/skills/skill-router/
+# 则此目录为 ~/.openclaw/skills/
+def _skills_install_dir() -> Path:
+    """skill 安装目录，扫描此目录检测用户手动/市场安装的新 skills"""
+    return _skill_dir().parent
+
+
 def _try_load_env():
     """尝试加载 .env 文件"""
     env_path = _skill_dir() / ".env"

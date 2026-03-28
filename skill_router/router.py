@@ -47,35 +47,40 @@ class SkillRouter:
         # 在后台线程执行，不阻塞路由
         def _do_sync():
             try:
-                from .config import _skills_pool_dir
+                from .config import _skills_install_dir, _skill_dir
 
-                pool_dir = _skills_pool_dir()
-                if not pool_dir.exists():
+                install_dir = _skills_install_dir()
+                skill_router_dir = _skill_dir()
+
+                if not install_dir.exists():
                     return
 
-                # 扫描目录中的所有 skill
-                pool_skills = {
-                    d for d in pool_dir.iterdir()
-                    if d.is_dir() and (d / "SKILL.md").exists()
+                # 扫描安装目录中的所有 skill（排除 skill-router 自身）
+                EXCLUDE_DIRS = {".git", "__pycache__", ".DS_Store", "node_modules"}
+                all_skills = {
+                    d for d in install_dir.iterdir()
+                    if d.is_dir()
+                    and d.name not in EXCLUDE_DIRS
+                    and d != skill_router_dir
+                    and (d / "SKILL.md").exists()
                 }
 
                 # 检查已注册的 skill
                 registered_paths = self.registry.list_skill_paths()
 
                 # 找出新增的 skill（在目录中但未注册）
-                new_skills = pool_skills - registered_paths
+                new_skills = all_skills - registered_paths
 
                 # 删除 stale entries（已注册但目录中不存在）
-                stale_paths = registered_paths - pool_skills
+                stale_paths = registered_paths - all_skills
                 if stale_paths:
-                    removed = self.registry.remove_stale(pool_skills)
+                    removed = self.registry.remove_stale(all_skills)
                     if removed > 0:
                         logger.info(f"Removed {removed} stale skills from registry")
 
                 # 索引新增的 skills（静默扫描）
                 for skill_path in new_skills:
                     try:
-                        # 使用 skip 模式跳过交互式扫描，但记录日志
                         self._silent_index(skill_path)
                     except Exception as e:
                         logger.warning(f"Failed to index new skill {skill_path.name}: {e}")
