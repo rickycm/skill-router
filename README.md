@@ -16,6 +16,17 @@
 - Python 3.10+
 - pip
 
+## AI Agent 快速安装
+
+适用于 OpenClaw / OpenCode / Claude Code / Codex 等 AI Agent 框架：
+
+```
+根据以下地址，安装和配置这个 skill：
+https://github.com/rickycm/skill-router
+```
+
+详细安装说明请参考 [INSTALL.md](INSTALL.md)。
+
 ## 快速开始
 
 ### 1. 安装

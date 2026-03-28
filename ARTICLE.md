@@ -16,6 +16,17 @@
 
 ---
 
+## AI Agent 快速安装
+
+适用于 OpenClaw / OpenCode / Claude Code / Codex 等 AI Agent 框架：
+
+```
+根据以下地址，安装和配置这个 skill：
+https://github.com/rickycm/skill-router
+```
+
+---
+
 ## 核心发现：技能 body 才是决定性信号
 
 研究表明，技能的名称和描述提供的区分度太低，真正决定选择准确率的是技能的完整实现代码（body）。
