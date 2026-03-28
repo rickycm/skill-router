@@ -121,8 +121,5 @@ class Config:
 
     @classmethod
     def create(cls) -> "Config":
-        """工厂方法：优先 .env，fallback OpenClaw"""
-        env_path = _skill_dir() / ".env"
-        if env_path.exists():
-            return cls.from_env()
-        return cls.from_openclaw()
+        """工厂方法：从 .env 加载配置"""
+        return cls.from_env()

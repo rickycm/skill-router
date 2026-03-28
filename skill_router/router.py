@@ -81,5 +81,5 @@ class SkillRouter:
 
     @classmethod
     def create(cls) -> "SkillRouter":
-        """工厂方法：优先从 .env 加载配置，fallback 到 OpenClaw"""
+        """工厂方法：从 .env 加载配置"""
         return cls(Config.create())
