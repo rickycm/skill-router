@@ -38,19 +38,22 @@ python3 -m skill_router install-all
 扫描 `~/.openclaw/skills/` 目录，将已安装的 Skills 迁移到 `.skills-pool/` 管理目录：
 
 ```
-~/.openclaw/skills/
+~/.openclaw/skills/                          # 安装前
 ├── skill-router/        # Skill Router 自身
-│   └── .skills-pool/     # 管理目录（迁移目标）
 ├── clawhub/              # 从 clawhub 安装的 Skills
 ├── my-skill-a/           # 用户手动安装的 Skills
-└── my-skill-b/           # → init 会扫描并迁移这些
+└── my-skill-b/           # → init 会将这些移动到 .skills-pool/
+
+~/.openclaw/skills/skill-router/.skills-pool/  # init 执行后
+├── my-skill-a/           # 已迁移，由 skill-router 管理
+└── my-skill-b/           # 已迁移，由 skill-router 管理
 ```
 
 执行 `init` 后会：
 1. 扫描 `~/.openclaw/skills/` 中所有有 `SKILL.md` 的目录
 2. 显示发现列表
-3. 复制到 `.skills-pool/` 并进行安全扫描
-4. 扫描失败的 Skills 会被回滚并提示
+3. **移动**到 `.skills-pool/` 并进行安全扫描（原目录会被移除）
+4. 扫描失败的 Skills 会被移回原位置
 
 ---
 

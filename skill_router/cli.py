@@ -163,12 +163,12 @@ def cmd_init(args):
             skipped += 1
             continue
 
-        # 复制到 .skills-pool
+        # 移动到 .skills-pool（而非复制）
         try:
-            shutil.copytree(skill_path, dest)
-            print(f"  ✅ {name} → 已复制")
+            shutil.move(str(skill_path), str(dest))
+            print(f"  ✅ {name} → 已迁移")
         except Exception as e:
-            print(f"  ❌ {name}: 复制失败 - {e}")
+            print(f"  ❌ {name}: 迁移失败 - {e}")
             failed += 1
             continue
 
@@ -179,7 +179,7 @@ def cmd_init(args):
         except Exception as e:
             if hasattr(e, "scan_result") and e.scan_result is not None:
                 print(f"  🔒 {name} - 安全扫描阻止")
-                blocked_results.append((name, e.scan_result, dest))
+                blocked_results.append((name, e.scan_result, dest, skill_path))
                 blocked += 1
             else:
                 print(f"  ❌ {name}: {e}")
@@ -190,13 +190,13 @@ def cmd_init(args):
 
     if blocked_results:
         print(f"\n🚨 被阻止的 Skills ({len(blocked_results)}):")
-        for name, result, dest in blocked_results:
-            # 移除已复制的目录
+        for name, result, dest, original_path in blocked_results:
+            # 回滚：移回原始位置
             try:
-                shutil.rmtree(dest)
-                print(f"  🔒 {name}: 已回滚（从 .skills-pool/ 删除）")
-            except:
-                print(f"  🔒 {name}: 回滚失败，请手动删除 {dest}")
+                shutil.move(str(dest), str(original_path))
+                print(f"  🔒 {name}: 已回滚（移回原始位置）")
+            except Exception as e:
+                print(f"  🔒 {name}: 回滚失败，请手动处理 {dest} -> {original_path}: {e}")
             findings = result.findings
             high_count = sum(1 for f in findings if f.severity.value in ("HIGH", "CRITICAL"))
             print(f"     {high_count} 高危发现 - {result.max_severity.value}")
