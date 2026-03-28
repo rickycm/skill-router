@@ -1,4 +1,15 @@
-# Skill Router Dependencies
+# Skill Router Dependencies (包含内置 Cisco Skill Scanner)
 httpx>=0.27.0
 numpy>=1.24.0
 python-dotenv>=1.0.0
+
+# 内置安全扫描依赖
+yara-x>=0.5.0
+oletools>=0.60
+pdfid>=0.2.0
+magika>=0.3.0
+pydantic>=2.0
+
+# 深度扫描可选依赖
+# anthropic>=0.76.0
+# openai>=2.0.0

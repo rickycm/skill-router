@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """router.py — Skill 路由主入口"""
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from .scanner import ScanResult
 from .config import Config
 from .embedding import EmbeddingProvider
 from .registry import SkillRegistry
@@ -30,9 +35,38 @@ class SkillRouter:
         """将任务路由到最合适的 Skill"""
         return self.searcher.search(task, top_k)
 
-    def install(self, skill_path: str) -> int:
-        """安装并注册新 Skill"""
-        return self.registry.register(skill_path)
+    def install(
+        self,
+        skill_path: str,
+        *,
+        scan_mode: str = "prompt",
+    ) -> tuple[int, Optional["ScanResult"]]:
+        """安装并注册新 Skill（安装前进行安全扫描）
+
+        Args:
+            skill_path: Skill 目录路径
+            scan_mode: 扫描模式 ("fast", "deep", "skip", "prompt")
+                - "prompt": 交互式选择（CLI 使用）
+                - "fast": 快速扫描（静态分析）
+                - "deep": 深度扫描（静态+LLM）
+                - "skip": 跳过扫描
+
+        Returns:
+            tuple (skill_id, scan_result)
+            scan_result 在 scan_mode="skip" 或 scanner 未安装时为 None
+
+        Raises:
+            SecurityScanFailed: 安全扫描发现威胁时抛出
+        """
+        from .scanner import pre_install_scan, SecurityScanFailed, is_scanner_available
+
+        scan_result = None
+
+        if scan_mode != "skip" and is_scanner_available():
+            scan_result = pre_install_scan(skill_path, scan_mode)
+
+        skill_id = self.registry.register(skill_path)
+        return skill_id, scan_result
 
     def list_skills(self) -> List[dict]:
         """列出所有已注册 Skills"""

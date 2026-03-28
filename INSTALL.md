@@ -10,11 +10,11 @@
 # 1. 复制 skill 目录
 cp -r skill-router/ ~/.openclaw/skills/
 
-# 2. 安装依赖
-pip install --break-system-packages ~/.openclaw/skills/skill-router
+# 2. 安装依赖（包含 Cisco Skill Scanner 安全扫描模块）
+cd ~/.openclaw/skills/skill-router
+pip install --break-system-packages .
 
 # 3. 初始化向量索引
-cd ~/.openclaw/skills/skill-router
 python3 -m skill_router install-all
 ```
 
@@ -68,6 +68,43 @@ OPENAI_DIMENSIONS=1536
 
 ---
 
+## Cisco Skill Scanner - 安全扫描配置
+
+skill-router 集成了 Cisco Skill Scanner，在安装新 Skill 时自动进行安全扫描。
+
+### 扫描模式
+
+| 模式 | 说明 | 依赖 |
+|------|------|------|
+| **快速扫描** | 静态分析（YARA 规则、字节码、管道分析） | 无 |
+| **深度扫描** | 静态 + LLM 语义分析 | 需要 LLM API 配置 |
+
+### 配置深度扫描（可选）
+
+编辑 `.env` 添加 LLM 配置：
+
+```env
+# LLM Provider: anthropic | openai | azure-openai | aws-bedrock | gcp-vertex | ollama | openrouter
+SKILL_SCANNER_LLM_PROVIDER=anthropic
+SKILL_SCANNER_LLM_API_KEY=your_api_key
+SKILL_SCANNER_LLM_MODEL=claude-3-5-sonnet-20241022
+```
+
+### 安装后使用
+
+```bash
+# 安装单个 skill（交互式选择扫描模式）
+python3 -m skill_router install /path/to/skill
+
+# 强制使用快速扫描
+python3 -m skill_router install /path/to/skill --scan-mode fast
+
+# 跳过安全扫描（不推荐）
+python3 -m skill_router install /path/to/skill --no-scan
+```
+
+---
+
 ## 安装到不同 AI Agent 平台
 
 skill-router 是纯 Python 包，不依赖 OpenClaw，可安装到任何 AI Agent 平台。
@@ -75,23 +112,24 @@ skill-router 是纯 Python 包，不依赖 OpenClaw，可安装到任何 AI Agen
 ### OpenClaw
 
 ```bash
-pip install --break-system-packages ~/.openclaw/skills/skill-router
 cd ~/.openclaw/skills/skill-router
+pip install --break-system-packages .
 python3 -m skill_router install-all
 ```
 
 ### Claude Code / OpenCode / Codex
 
 ```bash
-pip install --break-system-packages ~/path/to/skill-router
 cd ~/path/to/skill-router
+pip install --break-system-packages .
 python3 -m skill_router install-all
 ```
 
 ### 其他 Python 环境
 
 ```bash
-pip install --break-system-packages /path/to/skill-router
+cd /path/to/skill-router
+pip install --break-system-packages .
 python3 -m skill_router install-all
 ```
 
@@ -160,8 +198,9 @@ for s in router.list_skills():
 
 | 问题 | 原因 | 解决 |
 |------|------|------|
-| `No module named 'skill_router'` | 未安装包 | `pip install --break-system-packages ~/.openclaw/skills/skill-router` |
+| `No module named 'skill_router'` | 未安装包 | `cd ~/.openclaw/skills/skill-router && pip install --break-system-packages .` |
 | `No module named 'httpx'` | 缺少依赖 | `pip install httpx numpy python-dotenv` |
+| `No module named 'skill_scanner'` | 缺少 skill-scanner | `pip install --break-system-packages .` 会自动安装 |
 | `找不到 embedding API key` | .env 未配置或 Key 无效 | 检查 `.env` 中的 API 配置 |
 | `SKILL.md not found` | skill 目录缺少 SKILL.md | 确保目标 skill 有 SKILL.md 文件 |
 | 检索返回空 | 向量数据库为空 | 先运行 `python3 -m skill_router install-all` |
@@ -175,6 +214,7 @@ for s in router.list_skills():
 skill-router/                          # ← 整个目录复制到 ~/.openclaw/skills/
 ├── SKILL.md
 ├── INSTALL.md
+├── pyproject.toml                    # 项目配置（包含 Cisco Skill Scanner 依赖）
 ├── requirements.txt
 ├── .env.example
 ├── .env                              # 填入你的 API Key
@@ -185,9 +225,9 @@ skill-router/                          # ← 整个目录复制到 ~/.openclaw/s
 │   ├── embedding.py                  # Embedding 封装（OpenAI / Ollama）
 │   ├── manifest.py                   # SKILL.md 解析
 │   ├── registry.py                   # SQLite + NumPy 存储
-│   ├── search.py                    # 检索逻辑
 │   ├── router.py                    # 路由主入口
-│   └── cli.py                       # CLI 工具
+│   ├── scanner.py                   # Cisco Skill Scanner 封装
+│   └── cli.py                       # CLI 工具（含安全扫描集成）
 ├── scripts/                          # 向后兼容脚本
 └── .skills-pool/                     # ← 业务 skills 放这里
     ├── byted-web-search/
