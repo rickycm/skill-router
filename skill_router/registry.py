@@ -75,17 +75,25 @@ class SkillRegistry:
     def _upsert_vector(self, skill_id: int, vector: List[float]):
         """更新向量矩阵（append 或 replace）"""
         vectors = self._load_vectors()
-        arr = np.array(vector, dtype=np.float32)
-        # 确保向量矩阵有足够的行
-        if skill_id > len(vectors):
-            vectors = np.vstack([vectors, np.zeros((skill_id - len(vectors), vectors.shape[1]), dtype=np.float32)]) if len(vectors) > 0 else arr.reshape(1, -1)
-        if skill_id <= len(vectors):
-            if skill_id == len(vectors) + 1:
-                vectors = np.vstack([vectors, arr])
-            else:
-                vectors[skill_id - 1] = arr
-        else:
+        arr = np.array(vector, dtype=np.float32).reshape(1, -1)
+
+        if len(vectors) == 0:
+            # 首次插入
+            vectors = arr
+        elif skill_id > len(vectors) + 1:
+            # skill_id 跳跃太大（不应该发生），先填充
+            padding = np.zeros((skill_id - len(vectors) - 1, vectors.shape[1]), dtype=np.float32)
+            vectors = np.vstack([vectors, padding, arr])
+        elif skill_id == len(vectors) + 1:
+            # 追加到末尾
             vectors = np.vstack([vectors, arr])
+        elif 1 <= skill_id <= len(vectors):
+            # 替换现有位置
+            vectors[skill_id - 1] = arr
+        else:
+            # skill_id 无效（不应该发生）
+            raise ValueError(f"Invalid skill_id: {skill_id}, len(vectors): {len(vectors)}")
+
         np.save(self.vectors_path, vectors)
 
     def _load_vectors(self) -> np.ndarray:
