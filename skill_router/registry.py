@@ -130,3 +130,25 @@ class SkillRegistry:
         conn.commit()
         conn.close()
         return deleted
+
+    def list_skill_paths(self) -> set:
+        """获取所有已注册 skill 的路径集合"""
+        conn = sqlite3.connect(str(self.db_path))
+        rows = conn.execute("SELECT path FROM skills").fetchall()
+        conn.close()
+        return {Path(r[0]) for r in rows}
+
+    def remove_stale(self, valid_paths: set) -> int:
+        """删除不在 valid_paths 中的 stale entries，返回删除数量"""
+        if not valid_paths:
+            return 0
+        conn = sqlite3.connect(str(self.db_path))
+        placeholders = ",".join("?" * len(valid_paths))
+        cur = conn.execute(
+            f"DELETE FROM skills WHERE path NOT IN ({placeholders})",
+            [str(p) for p in valid_paths]
+        )
+        deleted = cur.rowcount
+        conn.commit()
+        conn.close()
+        return deleted

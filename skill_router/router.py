@@ -33,7 +33,90 @@ class SkillRouter:
 
     def route(self, task: str, top_k: int = 5) -> List[SearchResult]:
         """将任务路由到最合适的 Skill"""
+        # 懒加载同步：检测并处理新增/删除的 skills
+        self._sync_skills()
         return self.searcher.search(task, top_k)
+
+    def _sync_skills(self) -> None:
+        """懒加载同步：检测目录变化，新增索引，删除 stale entries"""
+        import threading
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # 在后台线程执行，不阻塞路由
+        def _do_sync():
+            try:
+                from .config import _skills_pool_dir
+
+                pool_dir = _skills_pool_dir()
+                if not pool_dir.exists():
+                    return
+
+                # 扫描目录中的所有 skill
+                pool_skills = {
+                    d for d in pool_dir.iterdir()
+                    if d.is_dir() and (d / "SKILL.md").exists()
+                }
+
+                # 检查已注册的 skill
+                registered_paths = self.registry.list_skill_paths()
+
+                # 找出新增的 skill（在目录中但未注册）
+                new_skills = pool_skills - registered_paths
+
+                # 删除 stale entries（已注册但目录中不存在）
+                stale_paths = registered_paths - pool_skills
+                if stale_paths:
+                    removed = self.registry.remove_stale(pool_skills)
+                    if removed > 0:
+                        logger.info(f"Removed {removed} stale skills from registry")
+
+                # 索引新增的 skills（静默扫描）
+                for skill_path in new_skills:
+                    try:
+                        # 使用 skip 模式跳过交互式扫描，但记录日志
+                        self._silent_index(skill_path)
+                    except Exception as e:
+                        logger.warning(f"Failed to index new skill {skill_path.name}: {e}")
+
+            except Exception as e:
+                logger.error(f"Skill sync failed: {e}")
+
+        # 启动后台线程
+        thread = threading.Thread(target=_do_sync, daemon=True)
+        thread.start()
+
+    def _silent_index(self, skill_path: Path) -> bool:
+        """静默索引单个 skill（用于后台同步）"""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            # 尝试安全扫描（静默模式）
+            from .scanner import pre_install_scan, SecurityScanFailed, is_scanner_available
+
+            scan_result = None
+            if is_scanner_available():
+                try:
+                    scan_result = pre_install_scan(skill_path, "fast")
+                    logger.info(f"New skill passed security scan: {skill_path.name}")
+                except SecurityScanFailed as e:
+                    # 安全扫描未通过，记录警告但不阻止索引
+                    logger.warning(
+                        f"New skill {skill_path.name} failed security scan: "
+                        f"{len(e.scan_result.findings)} findings"
+                    )
+
+            # 注册 skill
+            skill_id = self.registry.register(str(skill_path))
+            logger.info(f"Indexed new skill: {skill_path.name} (id={skill_id})")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to index skill {skill_path.name}: {e}")
+            return False
 
     def install(
         self,
