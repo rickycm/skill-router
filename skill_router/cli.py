@@ -107,11 +107,11 @@ def cmd_init(args):
         print(f"❌ Skills 安装目录不存在: {SKILLS_INSTALL_DIR}")
         sys.exit(1)
 
-    # 扫描安装目录中的 skills
+    # 扫描安装目录中的 skills（包含 symlink，因为 symlink 也可能指向真实目录）
     all_skills = {
         d: d / "SKILL.md"
         for d in SKILLS_INSTALL_DIR.iterdir()
-        if d.is_dir() and d != SKILL_ROUTER_DIR and d.name not in EXCLUDE
+        if (d.is_dir() or d.is_symlink()) and d != SKILL_ROUTER_DIR and d.name not in EXCLUDE
     }
 
     # 只保留有 SKILL.md 的目录
@@ -163,9 +163,17 @@ def cmd_init(args):
             skipped += 1
             continue
 
-        # 移动到 .skills-pool（而非复制）
+        # 移动到 .skills-pool（真实移动，不使用 symlink）
+        # shutil.move() 对 symlink 只移动链接文件本身，需要分情况处理
         try:
-            shutil.move(str(skill_path), str(dest))
+            if skill_path.is_symlink():
+                # Symlink: 复制真实内容到目标，删除原始 symlink
+                real_target = skill_path.resolve()
+                shutil.copytree(str(real_target), str(dest), symlinks=False)
+                skill_path.unlink()  # 删除 symlink 本身
+            else:
+                # 真实目录: 直接移动
+                shutil.move(str(skill_path), str(dest))
             print(f"  ✅ {name} → 已迁移")
         except Exception as e:
             print(f"  ❌ {name}: 迁移失败 - {e}")
@@ -193,7 +201,12 @@ def cmd_init(args):
         for name, result, dest, original_path in blocked_results:
             # 回滚：移回原始位置
             try:
-                shutil.move(str(dest), str(original_path))
+                if dest.is_symlink():
+                    real_target = dest.resolve()
+                    shutil.copytree(str(real_target), str(original_path), symlinks=False)
+                    shutil.rmtree(str(dest))
+                else:
+                    shutil.move(str(dest), str(original_path))
                 print(f"  🔒 {name}: 已回滚（移回原始位置）")
             except Exception as e:
                 print(f"  🔒 {name}: 回滚失败，请手动处理 {dest} -> {original_path}: {e}")
