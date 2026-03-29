@@ -7,8 +7,11 @@
 .skills-pool/
 
 # Generated data files
+data/
 data/skill_embeddings.db
 data/vectors.npy
+data/vectors.npy.bak
+data/sync_state.json
 
 # Python artifacts
 __pycache__/

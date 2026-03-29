@@ -46,6 +46,13 @@ def _try_load_env():
             load_dotenv(env_example)
 
 
+def _vectors_dir() -> Path:
+    """向量文件存储目录（per-skill .npy 文件）"""
+    skill_dir = _skill_dir()
+    data_dir = os.getenv("DATA_DIR", "./data")
+    return skill_dir / data_dir / "vectors"
+
+
 @dataclass
 class Config:
     embedding_provider: str
@@ -54,7 +61,7 @@ class Config:
     embedding_model: str
     embedding_dimensions: int
     db_path: Path
-    vectors_path: Path
+    vectors_dir: Path
     default_top_k: int
     min_score_threshold: float
 
@@ -82,7 +89,7 @@ class Config:
             embedding_model=model,
             embedding_dimensions=dimensions,
             db_path=data_path / "skill_embeddings.db",
-            vectors_path=data_path / "vectors.npy",
+            vectors_dir=data_path / "vectors",
             default_top_k=top_k,
             min_score_threshold=threshold,
         )
@@ -122,7 +129,7 @@ class Config:
             embedding_model=model,
             embedding_dimensions=DEFAULT_DIMENSIONS,
             db_path=skill_dir / "data" / "skill_embeddings.db",
-            vectors_path=skill_dir / "data" / "vectors.npy",
+            vectors_dir=skill_dir / "data" / "vectors",
             default_top_k=5,
             min_score_threshold=0.3,
         )

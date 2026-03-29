@@ -224,11 +224,12 @@ def cmd_search(args):
 
 def cmd_list(args):
     router = SkillRouter.create()
-    skills = router.list_skills()
-    print(f"\n📦 共 {len(skills)} 个已注册的 Skills\n")
+    skills = router.list_all_skills()
+    print(f"\n📦 共 {len(skills)} 个 Skills\n")
     print("═" * 60)
     for s in skills:
-        print(f"  • {s['skill_name']}  (v{s['version'] or '?'})  — {s['description'][:50] or ''}")
+        status_icon = {"ready": "✅", "pending": "⏳", "failed": "❌"}.get(s.get("status"), "?")
+        print(f"  {status_icon} {s['skill_name']}  (v{s['version'] or '?'})  — {s['description'][:50] or ''}  [{s.get('status', '?')}]")
 
 
 def cmd_install(args):
@@ -334,6 +335,30 @@ def cmd_uninstall(args):
         print(f"❌ 未找到: {args.name}")
 
 
+def cmd_status(args):
+    router = SkillRouter.create()
+    counts = router.count_all()
+    print(f"""
+📊 Skill Router 索引状态
+
+  ✅ Ready:   {counts['ready']}
+  ⏳ Pending: {counts['pending']}
+  ❌ Failed:  {counts['failed']}
+  ─────────────
+  总计:       {counts['total']}
+""")
+    if counts["pending"] > 0:
+        print("正在处理的 Skills:")
+        for s in router.list_all_skills():
+            if s.get("status") == "pending":
+                print(f"  ⏳ {s['skill_name']} — {s.get('path', '')}")
+    if counts["failed"] > 0:
+        print("\n失败的 Skills:")
+        for s in router.list_all_skills():
+            if s.get("status") == "failed":
+                print(f"  ❌ {s['skill_name']} — {s.get('path', '')}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Skill Router CLI")
     sub = parser.add_subparsers()
@@ -369,6 +394,9 @@ def main():
     p_uninstall = sub.add_parser("uninstall", help="卸载 Skill")
     p_uninstall.add_argument("name", help="Skill 名称")
     p_uninstall.set_defaults(fn=cmd_uninstall)
+
+    p_status = sub.add_parser("status", help="查看索引状态（pending/ready/failed）")
+    p_status.set_defaults(fn=cmd_status)
 
     args = parser.parse_args()
 
