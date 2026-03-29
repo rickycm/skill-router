@@ -18,8 +18,14 @@ class SkillRegistry:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _init_db(self):
+    def _conn(self):
+        """Create a SQLite connection with WAL mode disabled for durability."""
         conn = sqlite3.connect(str(self.db_path))
+        conn.execute("PRAGMA journal_mode=DELETE")
+        return conn
+
+    def _init_db(self):
+        conn = self._conn()
         conn.execute("""
             CREATE TABLE IF NOT EXISTS skills (
                 skill_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,7 +55,7 @@ class SkillRegistry:
         vector = self.embedding.embed_one(combined_text)
 
         # 存入 SQLite
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._conn()
         import time
         indexed_at = str(int(time.time()))
         try:
@@ -106,7 +112,7 @@ class SkillRegistry:
 
     def list_skills(self) -> List[Dict]:
         """列出所有已注册 skills"""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._conn()
         rows = conn.execute("SELECT skill_id, skill_name, version, description, tags, path, indexed_at FROM skills ORDER BY skill_id").fetchall()
         conn.close()
         return [
@@ -116,7 +122,7 @@ class SkillRegistry:
         ]
 
     def get_skill_by_id(self, skill_id: int) -> Optional[Dict]:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._conn()
         row = conn.execute("SELECT skill_id, skill_name, version, description, tags, path, indexed_at FROM skills WHERE skill_id=?",
                            (skill_id,)).fetchone()
         conn.close()
@@ -126,13 +132,13 @@ class SkillRegistry:
                 "tags": json.loads(row[4]) if row[4] else [], "path": row[5], "indexed_at": row[6]}
 
     def count(self) -> int:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._conn()
         n = conn.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
         conn.close()
         return n
 
     def unregister(self, skill_name: str) -> bool:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._conn()
         cur = conn.execute("DELETE FROM skills WHERE skill_name=?", (skill_name,))
         deleted = cur.rowcount > 0
         conn.commit()
@@ -141,7 +147,7 @@ class SkillRegistry:
 
     def list_skill_paths(self) -> set:
         """获取所有已注册 skill 的路径集合"""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._conn()
         rows = conn.execute("SELECT path FROM skills").fetchall()
         conn.close()
         return {Path(r[0]) for r in rows}
@@ -150,7 +156,7 @@ class SkillRegistry:
         """删除不在 valid_paths 中的 stale entries，返回删除数量"""
         if not valid_paths:
             return 0
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._conn()
         placeholders = ",".join("?" * len(valid_paths))
         cur = conn.execute(
             f"DELETE FROM skills WHERE path NOT IN ({placeholders})",
