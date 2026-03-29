@@ -1,7 +1,7 @@
 ---
 name: skill-router
 version: 2.0.0
-description: Skill 语义路由系统 — 通过向量检索从技能池中找到最适合当前任务的 Skill 并自动调用
+description: Skill 语义路由系统 — 通过向量检索从技能池中找到最适合当前任务的 Skill 并自动调用，接管所有的skill调用
 tags: [skill-router, vector-search, semantic-search, embedding]
 author: Ricky
 ---
